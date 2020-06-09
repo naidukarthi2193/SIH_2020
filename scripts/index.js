@@ -1,6 +1,5 @@
 const video = document.getElementById("video");
 const attentionBtn = document.getElementById("attention");
-let detection, expressions, alignedRect, landmarks;
 
 Promise.all([
   // faceapi.loadSsdMobilenetv1Model('/models'),
@@ -25,52 +24,68 @@ function startVideo() {
   );
 }
 
-video.addEventListener("play", () => {
-  // console.log('thiru');
+// video.addEventListener("play", () => {
+//   // console.log('thiru');
 
-  const canvas = faceapi.createCanvasFromMedia(video);
-  document.body.append(canvas);
-  const displaySize = { width: video.width, height: video.height };
-  faceapi.matchDimensions(canvas, displaySize);
+//   const canvas = faceapi.createCanvasFromMedia(video);
+//   // document.body.append(canvas);
+//   // const displaySize = { width: video.width, height: video.height };
+//   // faceapi.matchDimensions(canvas, displaySize);
 
-  setInterval(async () => {
-    const detections = await faceapi
-      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceExpressions();
-    if (detections[0]) {
-      console.log(detections[0]);
-      alignedRect = detections[0].alignedRect;
-      detection = detections[0].detection;
-      expressions = detections[0].expressions;
-      landmarks = detections[0].landmarks;
-    }
-
-    const resizedDetections = faceapi.resizeResults(detections, displaySize);
-    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-    faceapi.draw.drawDetections(canvas, resizedDetections);
-    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-    faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
-
-    // console.log(detections);
-  }, 100);
-});
+//   // setInterval(async () => {
+//   //   // const detections = await faceapi
+//   //   //   .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+//   //   //   .withFaceLandmarks()
+//   //   //   .withFaceExpressions();
+//   //   // if (detections[0]) {
+//   //   //   // console.log(detections[0]);
+//   //   //   alignedRect = detections[0].alignedRect;
+//   //   //   detection = detections[0].detection;
+//   //   //   expressions = detections[0].expressions;
+//   //   //   landmarks = detections[0].landmarks;
+//   //   // }
+//   //   // const resizedDetections = faceapi.resizeResults(detections, displaySize);
+//   //   // canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+//   //   // faceapi.draw.drawDetections(canvas, resizedDetections);
+//   //   // faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+//   //   // faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+//   //   // // console.log(detections);
+//   // }, 100);
+// });
 
 attentionBtn.addEventListener("click", () => {
   takeASnap().then(download);
 });
 
-function takeASnap() {
+async function takeASnap() {
   const canvas = document.createElement("canvas"); // create a canvas
-  const jsondata = document.createElement("p");
+  const displaySize = { width: video.width, height: video.height };
+  faceapi.matchDimensions(canvas, displaySize);
+
   const ctx = canvas.getContext("2d"); // get its context
   canvas.width = video.videoWidth; // set its size to the one of the video
   canvas.height = video.videoHeight;
+
+  // Single Image detection
+  const detections = await faceapi
+    .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks()
+    .withFaceExpressions();
+  if (detections[0]) {
+    let { topLeft, bottomRight } = detections[0].detection.box;
+    detection = { topLeft, bottomRight };
+    expressions = detections[0].expressions;
+    landmarks = detections[0].landmarks.positions;
+  }
+  const resizedDetections = faceapi.resizeResults(detections, displaySize);
+  canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+  faceapi.draw.drawDetections(canvas, resizedDetections);
+  faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+  faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
   ctx.drawImage(video, 0, 0); // the video
   canvas.style.display = "none";
 
-  jsondata.innerText = `${JSON.stringify({
-    alignedRect,
+  const jsondata = `${JSON.stringify({
     expressions,
     detection,
     landmarks,
